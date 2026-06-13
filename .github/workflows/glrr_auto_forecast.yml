@@ -6,15 +6,21 @@ on:
     - cron: '0 * * * *'
   workflow_dispatch: # Allows you to manually hit run from your phone/browser anytime
 
+# FIXES EXIT CODE 128: Grants write permissions to the bot so it can push maps cleanly
+permissions:
+  contents: write
+
 jobs:
   run-forecast:
     runs-on: ubuntu-latest
     steps:
+    # UPDATED: Upgraded to checkout@v4 to fix the Node.js deprecation warning
     - name: Checkout Code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
+    # UPDATED: Upgraded to setup-python@v5 to run on the latest clean environments
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
 
