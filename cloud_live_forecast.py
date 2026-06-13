@@ -24,10 +24,10 @@ else:
     forecast_horizon = 18
     print(f"[MODE] Meso-Scale Target Verified: Generating rapid {forecast_horizon}HR Refresh.")
 
-# --- STEP 1: FETCH REAL-TIME RADAR STREAM FROM THE CLOUD ---
+# --- STEP 1: FETCH REAL-TIME COMPOSITE RADAR STREAM FROM THE CLOUD ---
 print("[INGEST] Downloading current live composite radar grid...")
-# Pulling live US/Canada border composite radar from Iowa Mesonet server
-iem_url = "https://mesonet.agron.iastate.edu/data/gis/images/4326/USCOMP/n0r_0.png"
+# UPGRADED: Swapped from base reflectivity (n0r) to full COMPOSITE reflectivity (compref)
+iem_url = "https://mesonet.agron.iastate.edu/data/gis/images/4326/USCOMP/compref_0.png"
 
 try:
     response = requests.get(iem_url, timeout=15)
@@ -64,6 +64,16 @@ class ConvLSTMCell(nn.Module):
 print("[COMPUTE] Passing live stream through model weights...")
 model = ConvLSTMCell(input_dim=3, hidden_dim=16, kernel_size=3)
 
+# UPGRADED: Automatically load trained high-contrast weights from repo if they exist
+weights_path = "glrr_weights.pth"
+if os.path.exists(weights_path):
+    print("🥇 [WEIGHTS] Successfully loaded trained glrr_weights.pth from repository!")
+    model.load_state_dict(torch.load(weights_path, map_location=torch.device('cpu')))
+else:
+    print("[WARN] Trained weights missing in repository! Running on uninitialized brain.")
+
+model.eval()
+
 # Format the live incoming frame shape into a 4D tensor: (Batch, Channels, Height, Width)
 tensor_data = torch.from_numpy(live_matrix).float().permute(2, 0, 1).unsqueeze(0)
 
@@ -92,9 +102,10 @@ ax.add_feature(cfeature.LAKES.with_scale('50m'), facecolor='none', edgecolor='cy
 ax.add_feature(cfeature.COASTLINE.with_scale('50m'), edgecolor='white', linewidth=1.2)
 ax.add_feature(cfeature.STATES.with_scale('50m'), edgecolor='gray', linewidth=0.5)
 
-plt.title(f"GLRR Automated Forecast | Horizon: {forecast_horizon} Hours\nRun Cycle Tracker: {current_utc_hour:02d}Z Matched", fontsize=14, fontweight='bold')
+# UPGRADED: Updated title formatting to reflect full future composite estimations
+plt.title(f"GLRR Future Composite Reflectivity Estimate | Horizon: +{forecast_horizon} Hours\nRun Cycle Init: {current_utc_hour:02d}Z Live Target", fontsize=14, fontweight='bold')
 
 output_path = "outputs/live_glrr_forecast.png"
 plt.savefig(output_path, dpi=150, bbox_inches='tight')
 plt.close()
-print(f"🥇 [SUCCESS] Real-time data overlay successfully saved to: {output_path}")
+print(f"🥇 [SUCCESS] Real-time composite data overlay successfully saved to: {output_path}")
